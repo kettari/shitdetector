@@ -2,35 +2,25 @@ package main
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/hashicorp/go-memdb"
 	"github.com/kettari/shitdetector/errors"
+	"github.com/kettari/shitdetector/internal/commands"
+	"github.com/kettari/shitdetector/internal/config"
+	"github.com/kettari/shitdetector/internal/registry"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
 )
 
 func main() {
-	log.SetFormatter(&log.TextFormatter{
-		TimestampFormat: time.RFC3339Nano,
-	})
-	log.SetReportCaller(true)
-	log.SetOutput(os.Stdout)
-
-	token := os.Getenv("BOT_TOKEN")
-	if len(token) == 0 {
-		log.Fatal(errors.ErrBotTokenIsEmpty)
-	}
-
-	err := tgbotapi.SetLogger(log.StandardLogger())
+	cnt, err := registry.NewContainer(config.GetConfig())
 	if err != nil {
 		log.Panic(err)
 	}
-	bot, err := tgbotapi.NewBotAPI(token)
-	if err != nil {
-		log.Panic(err)
+	bot, ok := cnt.Get("bot").(*tgbotapi.BotAPI)
+	if !ok {
+		log.Panic(errors.ErrContainerBot)
 	}
-
-	bot.Debug = true
-
 	log.Infof("authorized on account %s", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
@@ -38,20 +28,58 @@ func main() {
 
 	updates, _ := bot.GetUpdatesChan(u)
 
+	// Wait for updates and clear them as we don't want to handle a large backlog of old messages
+	time.Sleep(time.Millisecond * 500)
+	updates.Clear()
+
 	for update := range updates {
 		if update.Message == nil { // ignore any non-Message Updates
 			continue
 		}
 
-		log.Debugf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+		if len(update.Message.Command()) > 0 {
+			log.Infof("[%s] command: %s", update.Message.From.UserName, update.Message.Text)
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		msg.ReplyToMessageID = update.Message.MessageID
+			var cmd commands.Command
+			switch update.Message.Command() {
+			case "help":
+				cmd = commands.NewHelpCommand(bot)
+			case "uptime":
+				db, ok := cnt.Get("db").(*memdb.MemDB)
+				if !ok {
+					log.Panic(errors.ErrContainerDb)
+				}
+				cmd = commands.NewUptimeCommand(bot, db)
+			default:
+				cmd = commands.NewUnknownCommand(bot)
+			}
 
-		_, err = bot.Send(msg)
-		if err != nil {
-			log.Error(errors.ErrBotSendMessage, err)
-			break
+			go cmd.Invoke(update)
+
+		} else {
+			log.Infof("[%s] message: %s", update.Message.From.UserName, update.Message.Text)
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Непонятно. Пришлите мне тикер или команду, пожалуйста /help")
+			msg.ReplyToMessageID = update.Message.MessageID
+
+			_, err = bot.Send(msg)
+			if err != nil {
+				log.Error(err)
+				break
+			}
 		}
+	}
+}
+
+func init() {
+	log.SetFormatter(&log.TextFormatter{
+		ForceColors: true,
+	})
+	log.SetReportCaller(true)
+	log.SetOutput(os.Stdout)
+
+	err := tgbotapi.SetLogger(log.StandardLogger())
+	if err != nil {
+		log.Panic(err)
 	}
 }
