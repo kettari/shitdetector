@@ -7,6 +7,7 @@ import (
 	"github.com/kettari/shitdetector/errors"
 	"github.com/kettari/shitdetector/internal/asset"
 	"github.com/kettari/shitdetector/internal/provider"
+	log "github.com/sirupsen/logrus"
 )
 
 type store struct {
@@ -73,14 +74,17 @@ func (s store) Get(ticker string) (*asset.Stock, error) {
 	}
 	if raw == nil {
 		shouldFetch = true
+		log.Debugf("stock %s is not found in the db, should fetch", ticker)
 	} else {
 		var ok bool
 		stock, ok = raw.(*asset.Stock)
 		if !ok {
 			return nil, fmt.Errorf("can't cast Asset: %s", err)
 		}
+		log.Debugf("stock %s is found in the db", ticker)
 		if stock.Expired() {
 			shouldFetch = true
+			log.Debugf("stock %s expired, should fetch", ticker)
 		}
 	}
 
@@ -92,6 +96,7 @@ func (s store) Get(ticker string) (*asset.Stock, error) {
 		if fetchedStock == nil {
 			return nil, errors.ErrStockNotFound
 		}
+		log.Debugf("stock %s fetched from provider", ticker)
 		if stock != nil {
 			if err = s.Update(fetchedStock); err != nil {
 				return nil, err

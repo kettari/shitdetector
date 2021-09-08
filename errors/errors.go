@@ -8,4 +8,5 @@ var (
 	ErrBotTokenIsEmpty    = errors.New("bot: token is empty")
 	ErrStockAlreadyExists = errors.New("db: stock with this ticker already exists")
 	ErrStockNotFound      = errors.New("db: stock not found")
+	ErrQuoteSummaryEmpty  = errors.New("yahoo provider: quote summary is empty")
 )

@@ -7,7 +7,7 @@ import (
 	storage2 "github.com/kettari/shitdetector/internal/asset/storage"
 	"github.com/kettari/shitdetector/internal/commands"
 	"github.com/kettari/shitdetector/internal/config"
-	"github.com/kettari/shitdetector/internal/provider/finviz"
+	"github.com/kettari/shitdetector/internal/provider/yahoo"
 	"github.com/kettari/shitdetector/internal/registry"
 	"github.com/kettari/shitdetector/internal/uptime/storage"
 	log "github.com/sirupsen/logrus"
@@ -34,7 +34,7 @@ func main() {
 	if err := uptimeService.Update(); err != nil {
 		log.Panic(err)
 	}
-	assetService := storage2.NewAssetService(db, finviz.NewFinvizProvider())
+	assetService := storage2.NewAssetService(db, yahoo.NewYahooProvider())
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60

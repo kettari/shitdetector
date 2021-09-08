@@ -6,6 +6,7 @@ type (
 	Stock struct {
 		ID        string
 		Ticker    string
+		ShortName string
 		Created   int64
 		MarketCap float64
 		EPS       float64
