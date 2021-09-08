@@ -4,8 +4,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/hashicorp/go-memdb"
 	"github.com/kettari/shitdetector/internal/asset/storage"
-	storage2 "github.com/kettari/shitdetector/internal/commands/storage"
 	"github.com/kettari/shitdetector/internal/config"
+	storage2 "github.com/kettari/shitdetector/internal/uptime/storage"
 	"github.com/sarulabs/di"
 )
 

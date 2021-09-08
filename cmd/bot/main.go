@@ -4,9 +4,12 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/hashicorp/go-memdb"
 	"github.com/kettari/shitdetector/errors"
+	storage2 "github.com/kettari/shitdetector/internal/asset/storage"
 	"github.com/kettari/shitdetector/internal/commands"
 	"github.com/kettari/shitdetector/internal/config"
+	"github.com/kettari/shitdetector/internal/provider/finviz"
 	"github.com/kettari/shitdetector/internal/registry"
+	"github.com/kettari/shitdetector/internal/uptime/storage"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
@@ -22,6 +25,16 @@ func main() {
 		log.Panic(errors.ErrContainerBot)
 	}
 	log.Infof("authorized on account %s", bot.Self.UserName)
+
+	db, ok := cnt.Get("db").(*memdb.MemDB)
+	if !ok {
+		log.Panic(errors.ErrContainerDb)
+	}
+	uptimeService := storage.NewUptimeService(db)
+	if err := uptimeService.Update(); err != nil {
+		log.Panic(err)
+	}
+	assetService := storage2.NewAssetService(db, finviz.NewFinvizProvider())
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -44,12 +57,10 @@ func main() {
 			switch update.Message.Command() {
 			case "help":
 				cmd = commands.NewHelpCommand(bot)
+			case "stock":
+				cmd = commands.NewStockCommand(bot, assetService)
 			case "uptime":
-				db, ok := cnt.Get("db").(*memdb.MemDB)
-				if !ok {
-					log.Panic(errors.ErrContainerDb)
-				}
-				cmd = commands.NewUptimeCommand(bot, db)
+				cmd = commands.NewUptimeCommand(bot, uptimeService)
 			default:
 				cmd = commands.NewUnknownCommand(bot)
 			}

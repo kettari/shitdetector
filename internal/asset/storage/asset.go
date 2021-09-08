@@ -1,16 +1,21 @@
 package storage
 
 import (
+	"fmt"
 	"github.com/hashicorp/go-memdb"
+	"github.com/hashicorp/go-uuid"
+	"github.com/kettari/shitdetector/errors"
 	"github.com/kettari/shitdetector/internal/asset"
+	"github.com/kettari/shitdetector/internal/provider"
 )
 
 type store struct {
-	db *memdb.MemDB
+	db   *memdb.MemDB
+	prov provider.StockProvider
 }
 
-func NewAssetService(db *memdb.MemDB) asset.Service {
-	return &store{db: db}
+func NewAssetService(db *memdb.MemDB, prov provider.StockProvider) asset.Service {
+	return &store{db: db, prov: prov}
 }
 
 func NewAssetSchema() *memdb.DBSchema {
@@ -35,7 +40,69 @@ func NewAssetSchema() *memdb.DBSchema {
 	}
 }
 
-func (s store) Get(ticket string) (asset *asset.Stock, err error) {
-	panic("not implemented")
-	return nil, nil
+func (s store) Create(stock *asset.Stock) error {
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		return err
+	}
+	stock.ID = id
+	return s.Update(stock)
+}
+
+func (s store) Update(stock *asset.Stock) error {
+	txn := s.db.Txn(true)
+	defer txn.Abort()
+
+	if err := txn.Insert("asset", stock); err != nil {
+		return err
+	}
+
+	txn.Commit()
+	return nil
+}
+
+func (s store) Get(ticker string) (*asset.Stock, error) {
+	txn := s.db.Txn(false)
+	defer txn.Abort()
+
+	var stock *asset.Stock
+	shouldFetch := false
+	raw, err := txn.First("asset", "ticker", ticker)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		shouldFetch = true
+	} else {
+		var ok bool
+		stock, ok = raw.(*asset.Stock)
+		if !ok {
+			return nil, fmt.Errorf("can't cast Asset: %s", err)
+		}
+		if stock.Expired() {
+			shouldFetch = true
+		}
+	}
+
+	if shouldFetch {
+		fetchedStock, err := s.prov.Fetch(ticker)
+		if err != nil {
+			return nil, err
+		}
+		if fetchedStock == nil {
+			return nil, errors.ErrStockNotFound
+		}
+		if stock != nil {
+			if err = s.Update(fetchedStock); err != nil {
+				return nil, err
+			}
+		} else {
+			if err = s.Create(fetchedStock); err != nil {
+				return nil, err
+			}
+			stock = fetchedStock
+		}
+	}
+
+	return stock, nil
 }

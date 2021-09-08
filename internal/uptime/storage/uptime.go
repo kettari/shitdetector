@@ -2,20 +2,14 @@ package storage
 
 import (
 	"fmt"
-	"github.com/hako/durafmt"
 	"github.com/hashicorp/go-memdb"
+	"github.com/kettari/shitdetector/internal/uptime"
 	"time"
 )
 
-type (
-	Uptime struct {
-		ID    int64
-		Since int64
-	}
-	uptimeService struct {
-		db *memdb.MemDB
-	}
-)
+type uptimeService struct {
+	db *memdb.MemDB
+}
 
 func NewUptimeSchema() *memdb.DBSchema {
 	return &memdb.DBSchema{
@@ -42,8 +36,8 @@ func (s uptimeService) Update() (err error) {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
-	uptime := &Uptime{ID: 1, Since: time.Now().Unix()}
-	if err = txn.Insert("uptime", uptime); err != nil {
+	upt := &uptime.Uptime{ID: 1, Since: time.Now().Unix()}
+	if err = txn.Insert("uptime", upt); err != nil {
 		return err
 	}
 
@@ -59,15 +53,10 @@ func (s uptimeService) Since() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	uptime, ok := raw.(*Uptime)
+	upt, ok := raw.(*uptime.Uptime)
 	if !ok {
 		return "", fmt.Errorf("can't cast Uptime: %s", err)
 	}
 
-	return uptime.ToWording(), nil
-}
-
-func (u Uptime) ToWording() (wording string) {
-	t := time.Unix(u.Since, 0)
-	return durafmt.Parse(time.Since(t).Round(time.Second)).String()
+	return upt.ToWording(), nil
 }
