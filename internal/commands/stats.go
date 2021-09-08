@@ -38,7 +38,7 @@ func (c statsCommand) Invoke(update tgbotapi.Update) {
 	for _, v := range stats {
 		text += fmt.Sprintf("%d) %s - %d\n", place, v.Ticker, v.Count)
 		place++
-		if place == 10 {
+		if place == 11 {
 			break
 		}
 	}

@@ -62,6 +62,18 @@ func (s store) Update(stock *asset.Stock) error {
 	return nil
 }
 
+func (s store) Delete(stock *asset.Stock) error {
+	txn := s.db.Txn(true)
+	defer txn.Abort()
+
+	if err := txn.Delete("asset", stock); err != nil {
+		return err
+	}
+
+	txn.Commit()
+	return nil
+}
+
 func (s store) Get(ticker string) (*asset.Stock, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
@@ -98,15 +110,14 @@ func (s store) Get(ticker string) (*asset.Stock, error) {
 		}
 		log.Debugf("stock %s fetched from provider", ticker)
 		if stock != nil {
-			if err = s.Update(fetchedStock); err != nil {
+			if err = s.Delete(stock); err != nil {
 				return nil, err
 			}
-		} else {
-			if err = s.Create(fetchedStock); err != nil {
-				return nil, err
-			}
-			stock = fetchedStock
 		}
+		if err = s.Create(fetchedStock); err != nil {
+			return nil, err
+		}
+		stock = fetchedStock
 	}
 
 	return stock, nil

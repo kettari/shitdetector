@@ -17,6 +17,8 @@ type (
 	Service interface {
 		Create(stock *Stock) error
 		Get(ticker string) (*Stock, error)
+		Update(stock *Stock) error
+		Delete(stock *Stock) error
 	}
 )
 
