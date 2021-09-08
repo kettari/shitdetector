@@ -8,9 +8,15 @@ import (
 
 const helpMessage =
 `
-GOOG - тикер акции
+Рассчитываю скоринг по методу <a href="https://t.me/Finindie/767">Finindie</a>, показываю основные параметры акций.
+
+Просто прислать текст «GOOG» - тикер акции
 /uptime сколько я работаю непрерывно
 /stats статистика запросов
+/stock информация по акции
+/source информация по источникам информации
+
+<i>Информация от бота не является персональной инвестиционной рекомендацией</i>
 `
 
 type helpCommand struct {
@@ -31,6 +37,8 @@ func NewHelpCommand(bot *tgbotapi.BotAPI) Command {
 
 func (c helpCommand) Invoke(update tgbotapi.Update) {
 	message := tgbotapi.NewMessage(update.Message.Chat.ID, helpMessage)
+	message.ParseMode = "HTML"
+	message.DisableWebPagePreview = true
 	if _, err := c.bot.Send(message); err != nil {
 		log.Errorf("help command error: %s", err)
 	}

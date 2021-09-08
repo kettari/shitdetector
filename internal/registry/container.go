@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/kettari/shitdetector/internal/asset/storage"
 	"github.com/kettari/shitdetector/internal/config"
+	storage3 "github.com/kettari/shitdetector/internal/stock_log/storage"
 	storage2 "github.com/kettari/shitdetector/internal/uptime/storage"
 	"github.com/sarulabs/di"
 )
@@ -30,7 +31,11 @@ func NewContainer(conf *config.Config) (di.Container, error) {
 		{
 			Name: "db",
 			Build: func(cnt di.Container) (interface{}, error) {
-				db, err := memdb.NewMemDB(unionSchemas(storage.NewAssetSchema(), storage2.NewUptimeSchema()))
+				db, err := memdb.NewMemDB(unionSchemas(
+					storage.NewAssetSchema(),
+					storage2.NewUptimeSchema(),
+					storage3.NewStockLogSchema(),
+				))
 				if err != nil {
 					return nil, err
 				}

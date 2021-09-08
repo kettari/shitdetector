@@ -9,6 +9,7 @@ import (
 	"github.com/kettari/shitdetector/internal/config"
 	"github.com/kettari/shitdetector/internal/provider/yahoo"
 	"github.com/kettari/shitdetector/internal/registry"
+	storage3 "github.com/kettari/shitdetector/internal/stock_log/storage"
 	"github.com/kettari/shitdetector/internal/uptime/storage"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -35,6 +36,7 @@ func main() {
 		log.Panic(err)
 	}
 	assetService := storage2.NewAssetService(db, yahoo.NewYahooProvider())
+	stockLogService := storage3.NewStockLogService(db)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -57,10 +59,14 @@ func main() {
 			switch update.Message.Command() {
 			case "help":
 				cmd = commands.NewHelpCommand(bot)
+			case "source":
+				cmd = commands.NewSourceCommand(bot)
 			case "stock":
-				cmd = commands.NewStockCommand(bot, assetService)
+				cmd = commands.NewStockCommand(bot, assetService, stockLogService)
 			case "uptime":
 				cmd = commands.NewUptimeCommand(bot, uptimeService)
+			case "stats":
+				cmd = commands.NewStatsCommand(bot, stockLogService)
 			default:
 				cmd = commands.NewUnknownCommand(bot)
 			}
@@ -70,14 +76,8 @@ func main() {
 		} else {
 			log.Infof("[%s] message: %s", update.Message.From.UserName, update.Message.Text)
 
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Непонятно. Пришлите мне тикер или команду, пожалуйста /help")
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			_, err = bot.Send(msg)
-			if err != nil {
-				log.Error(err)
-				break
-			}
+			cmd := commands.NewStockCommand(bot, assetService, stockLogService)
+			go cmd.Invoke(update)
 		}
 	}
 }
