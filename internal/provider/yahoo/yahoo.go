@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const yahooUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/%s?modules=price,defaultKeyStatistics,financialData,earningsTrend,earningsHistory`
+const yahooUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/%s?modules=price,defaultKeyStatistics,financialData,earningsTrend`
 
 type (
 	yahooProvider struct {
@@ -24,6 +24,7 @@ type (
 		DefaultKeyStatistics DefaultKeyStatisticsStruct `json:"defaultKeyStatistics"`
 		FinancialData        FinancialDataStruct        `json:"financialData"`
 		Price                PriceStruct                `json:"price"`
+		EarningsTrend        EarningsTrendStruct        `json:"earningsTrend"`
 	}
 	DefaultKeyStatisticsStruct struct {
 		TrailingEPS QuoteRecord `json:"trailingEps"`
@@ -35,6 +36,14 @@ type (
 	PriceStruct struct {
 		MarketCap QuoteRecord `json:"marketCap"`
 		ShortName string      `json:"shortName"`
+		Currency  string      `json:"currency"`
+	}
+	EarningsTrendStruct struct {
+		Trend []*TrendStruct `json:"trend"`
+	}
+	TrendStruct struct {
+		Period string      `json:"period"`
+		Growth QuoteRecord `json:"growth"`
 	}
 	QuoteRecord struct {
 		Raw float64 `json:"raw"`
@@ -55,6 +64,19 @@ func (p yahooProvider) Fetch(ticker string) (stock *asset.Stock, err error) {
 		return nil, errors.ErrQuoteSummaryEmpty
 	}
 
+	// Calculate EPS rate
+	pastEPS := float64(0.0)
+	futureEPS := float64(0.0)
+	for _, trend := range quoteSummary.Summary.Result[0].EarningsTrend.Trend {
+		if trend.Period == "-5y" {
+			pastEPS = trend.Growth.Raw
+		}
+		if trend.Period == "+5y" {
+			futureEPS = trend.Growth.Raw
+		}
+	}
+	epsRate := (pastEPS + futureEPS) / 2
+
 	stock = &asset.Stock{
 		Ticker:    ticker,
 		ShortName: quoteSummary.Summary.Result[0].Price.ShortName,
@@ -63,7 +85,11 @@ func (p yahooProvider) Fetch(ticker string) (stock *asset.Stock, err error) {
 		EPS:       quoteSummary.Summary.Result[0].DefaultKeyStatistics.TrailingEPS.Raw,
 		ROE:       quoteSummary.Summary.Result[0].FinancialData.ReturnOnEquity.Raw,
 		Leverage:  quoteSummary.Summary.Result[0].FinancialData.DebtToEquity.Raw,
-		EPSRate:   0,
+		EPSRate:   epsRate,
+		Currency:  quoteSummary.Summary.Result[0].Price.Currency,
+	}
+	if stock.Currency == "" {
+		stock.Currency = "USD"
 	}
 
 	return stock, nil

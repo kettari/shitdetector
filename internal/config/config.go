@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	BotToken string
-	Debug    bool
+	BotToken           string
+	Debug              bool
+	ExchangerateApiKey string
 }
 
 func GetConfig() *Config {
@@ -28,5 +29,11 @@ func GetConfig() *Config {
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
+
+	config.ExchangerateApiKey = os.Getenv("EXCHANGERATE_API_KEY")
+	if len(config.ExchangerateApiKey) == 0 {
+		log.Fatal(errors.ErrExchangerateApiKeyIsEmpty)
+	}
+
 	return &config
 }

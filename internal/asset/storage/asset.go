@@ -15,7 +15,7 @@ type store struct {
 	prov provider.StockProvider
 }
 
-func NewAssetService(db *memdb.MemDB, prov provider.StockProvider) asset.Service {
+func NewAssetService(db *memdb.MemDB, prov provider.StockProvider) *store {
 	return &store{db: db, prov: prov}
 }
 
@@ -47,10 +47,7 @@ func (s store) Create(stock *asset.Stock) error {
 		return err
 	}
 	stock.ID = id
-	return s.Update(stock)
-}
 
-func (s store) Update(stock *asset.Stock) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 

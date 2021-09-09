@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/kettari/shitdetector/internal/asset/storage"
 	"github.com/kettari/shitdetector/internal/config"
+	storage4 "github.com/kettari/shitdetector/internal/currency/storage"
 	storage3 "github.com/kettari/shitdetector/internal/stock_log/storage"
 	storage2 "github.com/kettari/shitdetector/internal/uptime/storage"
 	"github.com/sarulabs/di"
@@ -35,6 +36,7 @@ func NewContainer(conf *config.Config) (di.Container, error) {
 					storage.NewAssetSchema(),
 					storage2.NewUptimeSchema(),
 					storage3.NewStockLogSchema(),
+					storage4.NewCurrencySchema(),
 				))
 				if err != nil {
 					return nil, err

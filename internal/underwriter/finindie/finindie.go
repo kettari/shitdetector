@@ -36,7 +36,7 @@ func (u finindieUnderwriter) Score() (score *underwriter.Score) {
 
 	// Profitability
 	profitabilityCriteria := underwriter.ScoreCriteria{
-		Name:  "Прибыльность бзнеса (EPS ttm)",
+		Name:  "Прибыльность бизнеса (EPS ttm)",
 		Value: 1,
 	}
 	if u.stock.EPS > 0 {
@@ -75,6 +75,22 @@ func (u finindieUnderwriter) Score() (score *underwriter.Score) {
 		LeverageCriteria.Value = 4
 	}
 	score.Criterias = append(score.Criterias, &LeverageCriteria)
+
+	// EPS rate
+	EPSRateCriteria := underwriter.ScoreCriteria{
+		Name:  "Темпы роста EPS",
+		Value: 1,
+	}
+	if u.stock.EPSRate >= 0.2 {
+		EPSRateCriteria.Value = 5
+	} else if u.stock.EPSRate >= 0.12 {
+		EPSRateCriteria.Value = 4
+	} else if u.stock.EPSRate >= 0.06 {
+		EPSRateCriteria.Value = 3
+	} else if u.stock.EPSRate >= 0.0 {
+		EPSRateCriteria.Value = 2
+	}
+	score.Criterias = append(score.Criterias, &EPSRateCriteria)
 
 	return score
 }

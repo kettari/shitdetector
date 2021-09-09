@@ -7,6 +7,9 @@ import (
 	storage2 "github.com/kettari/shitdetector/internal/asset/storage"
 	"github.com/kettari/shitdetector/internal/commands"
 	"github.com/kettari/shitdetector/internal/config"
+	storage4 "github.com/kettari/shitdetector/internal/currency/storage"
+	"github.com/kettari/shitdetector/internal/provider/exchangerates"
+	"github.com/kettari/shitdetector/internal/provider/usdficator"
 	"github.com/kettari/shitdetector/internal/provider/yahoo"
 	"github.com/kettari/shitdetector/internal/registry"
 	storage3 "github.com/kettari/shitdetector/internal/stock_log/storage"
@@ -17,7 +20,8 @@ import (
 )
 
 func main() {
-	cnt, err := registry.NewContainer(config.GetConfig())
+	conf := config.GetConfig()
+	cnt, err := registry.NewContainer(conf)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -35,7 +39,7 @@ func main() {
 	if err := uptimeService.Update(); err != nil {
 		log.Panic(err)
 	}
-	assetService := storage2.NewAssetService(db, yahoo.NewYahooProvider())
+	assetService := storage2.NewAssetService(db, usdficator.NewUSDFicatorProvider(yahoo.NewYahooProvider(), storage4.NewCurrencyService(db, exchangerates.NewExchangeratesProvider(conf.ExchangerateApiKey))))
 	stockLogService := storage3.NewStockLogService(db)
 
 	u := tgbotapi.NewUpdate(0)

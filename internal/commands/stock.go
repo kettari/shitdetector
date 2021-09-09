@@ -16,14 +16,17 @@ import (
 
 const (
 	billion             = 1000000000
-	stockMessagePattern = `<b>%s %s</b>
-1) Рыночная капитализация (market cap), млрд: %.2f
-2) Прибыльность (EPS ttm): %.2f
-3) Рентабельность капитала (Return on Equity): %.2f%%
+	stockMessagePattern = `<b>%s %s</b> %s
+1) Рыночная капитализация (market cap): $%.2f млрд
+2) Прибыльность (EPS ttm): $%.2f
+3) Рентабельность капитала (ROE): %.2f%%
 4) Леверидж (Debt/Equity): %.2f
-5) Темпы роста EPS: (to be done)
+5) Темпы роста EPS: %.2f%%
 
 <i>Актуально на %s</i>`
+	badScore    = "\xF0\x9F\x92\xA9"
+	normalScore = "\xF0\x9F\x92\xAA"
+	goodScore   = "\xF0\x9F\x9A\x80"
 )
 
 type (
@@ -92,18 +95,29 @@ func (c stockCommand) Invoke(update tgbotapi.Update) {
 	}
 
 	if stock != nil {
+		underwriter := finindie.NewFinindieUnderwriter(stock)
+		score := underwriter.Score()
+		totalScore := score.TotalScore()
+
+		scoreSign := normalScore
+		if totalScore < 15 {
+			scoreSign = badScore
+		} else if totalScore > 20 {
+			scoreSign = goodScore
+		}
+
 		text := fmt.Sprintf(
 			stockMessagePattern,
 			ticker,
 			stock.ShortName,
+			scoreSign,
 			stock.MarketCap/billion,
 			stock.EPS,
 			stock.ROE*100,
 			stock.Leverage/100,
+			stock.EPSRate*100,
 			time.Unix(stock.Created, 0).Format("Jan 2 15:04:05 2006 MST"))
 
-		underwriter := finindie.NewFinindieUnderwriter(stock)
-		score := underwriter.Score()
 		text += "\n\n" + score.Describe() + "\n\n<i>Не является индивидуальной инвестиционной рекомендацией</i>"
 
 		editMessageConfig := tgbotapi.NewEditMessageText(update.Message.Chat.ID, message.MessageID, text)
