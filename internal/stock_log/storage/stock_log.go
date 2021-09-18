@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"github.com/hako/durafmt"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-uuid"
 	"github.com/kettari/shitdetector/internal/stock_log"
@@ -136,4 +137,60 @@ func (s stockLogService) Stats() (stats stock_log.TickerStats, err error) {
 	sort.Sort(stats)
 
 	return stats, nil
+}
+
+func (s stockLogService) Last() (lasts stock_log.TickerLasts, err error) {
+	txn := s.db.Txn(false)
+	defer txn.Abort()
+
+	it, err := txn.GetReverse("stock_log", "timestamp")
+	if err != nil {
+		return nil, err
+	}
+
+	var tickers = map[string]int64{}
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		stockLog, ok := obj.(*stock_log.StockLog)
+		if !ok {
+			return nil, fmt.Errorf("can't cast StockLog: %s", err)
+		}
+		if _, ok := tickers[stockLog.Ticker]; !ok {
+			tickers[stockLog.Ticker] = stockLog.Created
+		} else if tickers[stockLog.Ticker] < stockLog.Created {
+			tickers[stockLog.Ticker] = stockLog.Created
+		}
+		if len(lasts) == 10 {
+			break
+		}
+	}
+
+	lasts = make(stock_log.TickerLasts, 0)
+	for tckr, when := range tickers {
+		t := &stock_log.TickerLast{
+			Ticker:         tckr,
+			Timestamp:      when,
+			RequestedSince: durafmt.Parse(time.Since(time.Unix(when, 0)).Round(time.Second)).String(),
+		}
+		lasts = append(lasts, t)
+	}
+	sort.Sort(lasts)
+
+	return lasts, nil
+}
+
+func (s stockLogService) Count() (count int64, err error) {
+	txn := s.db.Txn(false)
+	defer txn.Abort()
+
+	it, err := txn.Get("stock_log", "timestamp")
+	if err != nil {
+		return 0, err
+	}
+
+	count = 0
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		count++
+	}
+
+	return count, nil
 }
