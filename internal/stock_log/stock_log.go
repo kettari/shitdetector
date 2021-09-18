@@ -11,7 +11,8 @@ type (
 		Cleanup() error
 		Stats() (TickerStats, error)
 		Last() (TickerLasts, error)
-		Count() (count int64, err error)
+		CountTotal() (count int64, err error)
+		Count24Hours() (count int64, err error)
 	}
 	TickerStats []*TickerStat
 	TickerStat  struct {

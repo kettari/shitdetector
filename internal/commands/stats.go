@@ -38,9 +38,14 @@ func (c statsCommand) Invoke(update tgbotapi.Update) {
 		log.Errorf("can't get Lasts(): %s", err)
 		return
 	}
-	count, err := c.stockLogService.Count()
+	count24, err := c.stockLogService.Count24Hours()
 	if err != nil {
-		log.Errorf("can't get Count(): %s", err)
+		log.Errorf("can't get Count24Hours(): %s", err)
+		return
+	}
+	count, err := c.stockLogService.CountTotal()
+	if err != nil {
+		log.Errorf("can't get CountTotal(): %s", err)
 		return
 	}
 
@@ -65,7 +70,8 @@ func (c statsCommand) Invoke(update tgbotapi.Update) {
 		}
 	}
 
-	text += "\nВсего запросов в статистике: " + fmt.Sprintf("%d", count)
+	text += "\nЗапросов за сутки: " + fmt.Sprintf("%d", count24)
+	text += "\nВсего запросов: " + fmt.Sprintf("%d", count)
 
 	message := tgbotapi.NewMessage(update.Message.Chat.ID, text)
 	message.ParseMode = "HTML"

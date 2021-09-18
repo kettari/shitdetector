@@ -61,6 +61,8 @@ func main() {
 
 			var cmd commands.Command
 			switch update.Message.Command() {
+			case "start":
+				cmd = commands.NewHelpCommand(bot)
 			case "help":
 				cmd = commands.NewHelpCommand(bot)
 			case "source":

@@ -178,7 +178,7 @@ func (s stockLogService) Last() (lasts stock_log.TickerLasts, err error) {
 	return lasts, nil
 }
 
-func (s stockLogService) Count() (count int64, err error) {
+func (s stockLogService) CountTotal() (count int64, err error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -190,6 +190,30 @@ func (s stockLogService) Count() (count int64, err error) {
 	count = 0
 	for obj := it.Next(); obj != nil; obj = it.Next() {
 		count++
+	}
+
+	return count, nil
+}
+
+func (s stockLogService) Count24Hours() (count int64, err error) {
+	txn := s.db.Txn(false)
+	defer txn.Abort()
+
+	it, err := txn.Get("stock_log", "timestamp")
+	if err != nil {
+		return 0, err
+	}
+
+	count = 0
+	then := time.Now().Add(-1 * time.Hour * 24)
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		stockLog, ok := obj.(*stock_log.StockLog)
+		if !ok {
+			return 0, fmt.Errorf("can't cast StockLog: %s", err)
+		}
+		if stockLog.Created >= then.Unix() {
+			count++
+		}
 	}
 
 	return count, nil
