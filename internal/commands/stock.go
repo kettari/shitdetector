@@ -40,6 +40,22 @@ type (
 var (
 	stockCommandInstance *stockCommand
 	stockOnce            sync.Once
+	suggestions          = map[string]string{
+		"APPL": "AAPL -- Apple Inc.",
+		"LKOH": "LKOH.ME -- OIL CO LUKOIL PJSC",
+		"SBER": "SBER.ME -- SBERBANK OF RUSSIA",
+		"ENRU": "ENEL.ME -- ENEL RUSSIA PJSC",
+		"RUAL": "RUAL.ME -- UNITED COMPANY RU",
+		"TCSG": "TCSG.ME -- TCS GROUP HOLDING",
+		"GAZP": "GAZP.ME -- GAZPROM PJSC",
+		"FIXP": "FIXP.ME -- FIX PRICE GROUP LT",
+		"IRAO": "IRAO.ME -- INTER RAO UES PJSC",
+		"CHMF": "CHMF.ME -- SEVERSTAL PJSC",
+		"POLY": "POLY.ME -- POLYMETAL INTL PLC",
+		"POGR": "POGR.ME -- PETROPAVLOVSK PLC",
+		"ALRS": "ALRS.ME -- ALROSA PJSC",
+		"AFLT": "AFLT.ME -- AEROFLOT PJSC",
+	}
 )
 
 func NewStockCommand(bot *tgbotapi.BotAPI, assetSvc asset.Service, stockLogSvc stock_log.Service) Command {
@@ -70,6 +86,15 @@ func (c stockCommand) Invoke(update tgbotapi.Update) {
 	if err != nil {
 		log.Errorf("stock command error: %s", err)
 		return
+	}
+
+	if sugg, ok := suggestions[ticker]; ok {
+		messageConfig := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Возможно, вы имели в виду %s", sugg))
+		_, err := c.bot.Send(messageConfig)
+		if err != nil {
+			log.Errorf("stock command error: %s", err)
+			return
+		}
 	}
 
 	stock, err := c.assetService.Get(ticker)
